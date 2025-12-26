@@ -1,0 +1,15 @@
+F:\DotNetP\MyApp\bin\Debug\net9.0\MyApp.exe
+F:\DotNetP\MyApp\bin\Debug\net9.0\MyApp.deps.json
+F:\DotNetP\MyApp\bin\Debug\net9.0\MyApp.runtimeconfig.json
+F:\DotNetP\MyApp\bin\Debug\net9.0\MyApp.dll
+F:\DotNetP\MyApp\bin\Debug\net9.0\MyApp.pdb
+F:\DotNetP\MyApp\obj\Debug\net9.0\MyApp.GeneratedMSBuildEditorConfig.editorconfig
+F:\DotNetP\MyApp\obj\Debug\net9.0\MyApp.AssemblyInfoInputs.cache
+F:\DotNetP\MyApp\obj\Debug\net9.0\MyApp.AssemblyInfo.cs
+F:\DotNetP\MyApp\obj\Debug\net9.0\MyApp.csproj.CoreCompileInputs.cache
+F:\DotNetP\MyApp\obj\Debug\net9.0\MyApp.dll
+F:\DotNetP\MyApp\obj\Debug\net9.0\refint\MyApp.dll
+F:\DotNetP\MyApp\obj\Debug\net9.0\MyApp.pdb
+F:\DotNetP\MyApp\obj\Debug\net9.0\MyApp.genruntimeconfig.cache
+F:\DotNetP\MyApp\obj\Debug\net9.0\ref\MyApp.dll
+F:\DotNetP\Myapp\obj\Debug\net9.0\MyApp.sourcelink.json
