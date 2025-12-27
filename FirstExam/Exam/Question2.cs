@@ -1,298 +1,189 @@
 using System;
 
-public class RetailProfitAnalyzer
+public class QuickMartProfitCalculator
 {
-    // Immutable record-like structure
-    public readonly struct SalesRecord
+    // Stores one transaction at a time
+    public class SaleTransaction
     {
-        public readonly string InvoiceNumber;
-        public readonly string ClientName;
-        public readonly string ProductName;
-        public readonly int ItemCount;
-        public readonly decimal BuyPrice;
-        public readonly decimal SellPrice;
-        public readonly string ProfitStatus;
-        public readonly decimal ProfitLossValue;
-        public readonly decimal MarginPercentage;
+        public string InvoiceNo;
+        public string CustomerName;
+        public string ItemName;
+        public int Quantity;
+        public decimal PurchaseAmount;
+        public decimal SellingAmount;
+        public string ProfitOrLossStatus;
+        public decimal ProfitOrLossAmount;
+        public decimal ProfitMarginPercent;
 
-        public SalesRecord(string invoice, string client, string product, int count, 
-                          decimal buy, decimal sell, string status, decimal value, decimal margin)
+        // Calculates status and margin
+        public void CalculateProfitDetails()
         {
-            InvoiceNumber = invoice;
-            ClientName = client;
-            ProductName = product;
-            ItemCount = count;
-            BuyPrice = buy;
-            SellPrice = sell;
-            ProfitStatus = status;
-            ProfitLossValue = value;
-            MarginPercentage = margin;
-        }
-
-        // Factory method for creating calculated record
-        public static SalesRecord CreateWithCalculations(string invoice, string client, string product, 
-                                                        int count, decimal buy, decimal sell)
-        {
-            var (status, value, margin) = CalculateProfitMetrics(buy, sell);
-            return new SalesRecord(invoice, client, product, count, buy, sell, status, value, margin);
-        }
-
-        // Pure function for profit calculations
-        private static (string status, decimal value, decimal margin) CalculateProfitMetrics(decimal buy, decimal sell)
-        {
-            if (sell > buy)
-                return ("PROFIT", sell - buy, ((sell - buy) / buy) * 100);
-            else if (sell < buy)
-                return ("LOSS", buy - sell, ((buy - sell) / buy) * 100);
+            if (SellingAmount > PurchaseAmount)
+            {
+                ProfitOrLossStatus = "PROFIT";
+                ProfitOrLossAmount = SellingAmount - PurchaseAmount;
+            }
+            else if (SellingAmount < PurchaseAmount)
+            {
+                ProfitOrLossStatus = "LOSS";
+                ProfitOrLossAmount = PurchaseAmount - SellingAmount;
+            }
             else
-                return ("BREAK-EVEN", 0m, 0m);
-        }
+            {
+                ProfitOrLossStatus = "BREAK-EVEN";
+                ProfitOrLossAmount = 0;
+            }
 
-        public SalesRecord Recalculate()
-        {
-            var (status, value, margin) = CalculateProfitMetrics(BuyPrice, SellPrice);
-            return new SalesRecord(InvoiceNumber, ClientName, ProductName, ItemCount, 
-                                 BuyPrice, SellPrice, status, value, margin);
+            ProfitMarginPercent = PurchaseAmount > 0
+                ? (ProfitOrLossAmount / PurchaseAmount) * 100
+                : 0;
         }
     }
 
-    // Application state
-    private static SalesRecord? storedRecord = null;
+    static SaleTransaction LastTransaction;
+    static bool HasLastTransaction = false;
 
-    // Main application entry
     public static void Main()
     {
-        RunMainLoop();
-    }
-
-    private static void RunMainLoop()
-    {
-        bool continueApp = true;
-        while (continueApp)
+        bool run = true;
+        while (run)
         {
-            continueApp = DisplayMenuAndProcess();
+            run = ShowMenu();
         }
     }
 
-    private static bool DisplayMenuAndProcess()
+    static bool ShowMenu()
     {
-        ShowApplicationHeader();
-        int selection = GetUserMenuChoice();
-        return ProcessUserSelection(selection);
-    }
-
-    private static void ShowApplicationHeader()
-    {
-        Console.WriteLine("================== QuickMart Traders ==================");
-        Console.WriteLine("1. Create New Transaction (Enter Purchase & Selling Details)");
+        Console.WriteLine("\n================= QuickMart Traders =================");
+        Console.WriteLine("1. Create New Transaction");
         Console.WriteLine("2. View Last Transaction");
-        Console.WriteLine("3. Calculate Profit/Loss (Recompute & Print)");
+        Console.WriteLine("3. Calculate Profit/Loss");
         Console.WriteLine("4. Exit");
-    }
+        Console.Write("Choose an option: ");
 
-    private static int GetUserMenuChoice()
-    {
-        while (true)
+        string choice = Console.ReadLine();
+        Console.WriteLine("----------------------------------------------------");
+
+        switch (choice)
         {
-            Console.WriteLine("Enter your option:");
-            string input = Console.ReadLine() ?? "";
-            
-            if (int.TryParse(input, out int choice) && IsValidMenuOption(choice))
-                return choice;
-                
-            Console.WriteLine("Invalid choice. Please select 1, 2, 3, or 4.");
+            case "1": CreateTransaction(); return true;
+            case "2": ViewTransaction(); return true;
+            case "3": RecalculateProfit(); return true;
+            case "4": Console.WriteLine("Application Closed. Thank You!"); return false;
+            default: Console.WriteLine("Invalid choice, try again."); return true;
         }
     }
 
-    private static bool IsValidMenuOption(int option) => option >= 1 && option <= 4;
-
-    private static bool ProcessUserSelection(int selection)
+    static void CreateTransaction()
     {
-        return selection switch
+        SaleTransaction st = new SaleTransaction();
+
+        st.InvoiceNo = ReadRequiredText("Enter Invoice No");
+        st.CustomerName = ReadOptionalText("Enter Customer Name");
+        st.ItemName = ReadOptionalText("Enter Item Name");
+        st.Quantity = ReadPositiveInt("Enter Quantity");
+        st.PurchaseAmount = ReadPositiveDecimal("Enter Purchase Amount (Total)");
+        st.SellingAmount = ReadNonNegativeDecimal("Enter Selling Amount (Total)");
+
+        st.CalculateProfitDetails();
+        LastTransaction = st;
+        HasLastTransaction = true;
+
+        Console.WriteLine("\nTransaction Saved.");
+        PrintProfitDetails(st);
+    }
+
+    static void ViewTransaction()
+    {
+        if (!HasLastTransaction)
         {
-            1 => ExecuteTransactionCreation(),
-            2 => ExecuteTransactionDisplay(),
-            3 => ExecuteProfitRecalculation(),
-            4 => ExecuteApplicationExit(),
-            _ => true
-        };
-    }
-
-    private static bool ExecuteTransactionCreation()
-    {
-        Console.WriteLine();
-        var record = CollectTransactionData()
-            .ValidateAndProcess()
-            .StoreRecord();
-            
-        DisplayTransactionResult(record);
-        ShowSeparator();
-        return true;
-    }
-
-    private static TransactionBuilder CollectTransactionData()
-    {
-        return new TransactionBuilder()
-            .WithInvoice(PromptForRequiredText("Enter Invoice No"))
-            .WithCustomer(PromptForOptionalText("Enter Customer Name"))
-            .WithProduct(PromptForOptionalText("Enter Item Name"))
-            .WithQuantity(PromptForPositiveInteger("Enter Quantity"))
-            .WithPurchaseAmount(PromptForPositiveDecimal("Enter Purchase Amount (total)"))
-            .WithSellingAmount(PromptForNonNegativeDecimal("Enter Selling Amount (total)"));
-    }
-
-    private static bool ExecuteTransactionDisplay()
-    {
-        Console.WriteLine();
-        if (HasStoredRecord())
-            DisplayStoredTransaction();
-        else
-            ShowNoTransactionMessage();
-        ShowSeparator();
-        return true;
-    }
-
-    private static bool ExecuteProfitRecalculation()
-    {
-        Console.WriteLine();
-        if (HasStoredRecord())
-        {
-            storedRecord = storedRecord.Value.Recalculate();
-            DisplayCalculationResults(storedRecord.Value);
+            Console.WriteLine("No transaction found. Create one first.");
+            return;
         }
-        else
-            ShowNoTransactionMessage();
-        ShowSeparator();
-        return true;
-    }
 
-    private static bool ExecuteApplicationExit()
-    {
-        Console.WriteLine("Thank you. Application closed normally.");
-        return false;
-    }
-
-    // Helper methods
-    private static bool HasStoredRecord() => storedRecord.HasValue;
-
-    private static void ShowNoTransactionMessage()
-    {
-        Console.WriteLine("No transaction available. Please create a new transaction first.");
-    }
-
-    private static void ShowSeparator()
-    {
-        Console.WriteLine("------------------------------------------------------");
-    }
-
-    private static void DisplayStoredTransaction()
-    {
-        var record = storedRecord.Value;
-        Console.WriteLine("-------------- Last Transaction --------------");
-        Console.WriteLine($"InvoiceNo: {record.InvoiceNumber}");
-        Console.WriteLine($"Customer: {record.ClientName}");
-        Console.WriteLine($"Item: {record.ProductName}");
-        Console.WriteLine($"Quantity: {record.ItemCount}");
-        Console.WriteLine($"Purchase Amount: {record.BuyPrice:F2}");
-        Console.WriteLine($"Selling Amount: {record.SellPrice:F2}");
-        Console.WriteLine($"Status: {record.ProfitStatus}");
-        Console.WriteLine($"Profit/Loss Amount: {record.ProfitLossValue:F2}");
-        Console.WriteLine($"Profit Margin (%): {record.MarginPercentage:F2}");
+        var st = LastTransaction;
+        Console.WriteLine("\n------------- Last Transaction -------------");
+        Console.WriteLine($"InvoiceNo: {st.InvoiceNo}");
+        Console.WriteLine($"Customer: {st.CustomerName}");
+        Console.WriteLine($"Item: {st.ItemName}");
+        Console.WriteLine($"Quantity: {st.Quantity}");
+        Console.WriteLine($"Purchase Amount: {st.PurchaseAmount:F2}");
+        Console.WriteLine($"Selling Amount: {st.SellingAmount:F2}");
+        Console.WriteLine($"Status: {st.ProfitOrLossStatus}");
+        Console.WriteLine($"Profit/Loss Amount: {st.ProfitOrLossAmount:F2}");
+        Console.WriteLine($"Profit Margin (%): {st.ProfitMarginPercent:F2}");
         Console.WriteLine("--------------------------------------------");
     }
 
-    private static void DisplayTransactionResult(SalesRecord record)
+    static void RecalculateProfit()
     {
-        Console.WriteLine("Transaction saved successfully.");
-        DisplayCalculationResults(record);
+        if (!HasLastTransaction)
+        {
+            Console.WriteLine("No transaction available.");
+            return;
+        }
+
+        LastTransaction.CalculateProfitDetails();
+        Console.WriteLine("\nRecalculated.");
+        PrintProfitDetails(LastTransaction);
     }
 
-    private static void DisplayCalculationResults(SalesRecord record)
+    static void PrintProfitDetails(SaleTransaction st)
     {
-        Console.WriteLine($"Status: {record.ProfitStatus}");
-        Console.WriteLine($"Profit/Loss Amount: {record.ProfitLossValue:F2}");
-        Console.WriteLine($"Profit Margin (%): {record.MarginPercentage:F2}");
+        Console.WriteLine($"Status: {st.ProfitOrLossStatus}");
+        Console.WriteLine($"Profit/Loss Amount: {st.ProfitOrLossAmount:F2}");
+        Console.WriteLine($"Profit Margin (%): {st.ProfitMarginPercent:F2}");
+        Console.WriteLine("------------------------------------------------------");
     }
 
-    // Input collection methods
-    private static string PromptForRequiredText(string prompt)
+    // Input Helpers
+    static string ReadRequiredText(string message)
     {
         while (true)
         {
-            Console.WriteLine($"{prompt}:");
+            Console.Write(message + ": ");
             string input = Console.ReadLine()?.Trim() ?? "";
             if (!string.IsNullOrEmpty(input)) return input;
-            Console.WriteLine("This field cannot be empty!");
+            Console.WriteLine("This field cannot be empty.");
         }
     }
 
-    private static string PromptForOptionalText(string prompt)
+    static string ReadOptionalText(string message)
     {
-        Console.WriteLine($"{prompt}:");
+        Console.Write(message + ": ");
         return Console.ReadLine()?.Trim() ?? "";
     }
 
-    private static int PromptForPositiveInteger(string prompt)
+    static int ReadPositiveInt(string message)
     {
         while (true)
         {
-            Console.WriteLine($"{prompt}:");
-            if (int.TryParse(Console.ReadLine(), out int value) && value > 0)
-                return value;
-            Console.WriteLine("Please enter a positive integer!");
+            Console.Write(message + ": ");
+            if (int.TryParse(Console.ReadLine(), out int val) && val > 0)
+                return val;
+            Console.WriteLine("Enter a valid number.");
         }
     }
 
-    private static decimal PromptForPositiveDecimal(string prompt)
+    static decimal ReadPositiveDecimal(string message)
     {
         while (true)
         {
-            Console.WriteLine($"{prompt}:");
-            if (decimal.TryParse(Console.ReadLine(), out decimal value) && value > 0)
-                return value;
-            Console.WriteLine("Please enter a positive amount!");
+            Console.Write(message + ": ");
+            if (decimal.TryParse(Console.ReadLine(), out decimal val) && val > 0)
+                return val;
+            Console.WriteLine("Enter a valid amount.");
         }
     }
 
-    private static decimal PromptForNonNegativeDecimal(string prompt)
+    static decimal ReadNonNegativeDecimal(string message)
     {
         while (true)
         {
-            Console.WriteLine($"{prompt}:");
-            if (decimal.TryParse(Console.ReadLine(), out decimal value) && value >= 0)
-                return value;
-            Console.WriteLine("Please enter a non-negative amount!");
-        }
-    }
-
-    // Builder pattern for transaction creation
-    private class TransactionBuilder
-    {
-        private string invoice = "";
-        private string customer = "";
-        private string product = "";
-        private int quantity = 0;
-        private decimal purchase = 0m;
-        private decimal selling = 0m;
-
-        public TransactionBuilder WithInvoice(string value) { invoice = value; return this; }
-        public TransactionBuilder WithCustomer(string value) { customer = value; return this; }
-        public TransactionBuilder WithProduct(string value) { product = value; return this; }
-        public TransactionBuilder WithQuantity(int value) { quantity = value; return this; }
-        public TransactionBuilder WithPurchaseAmount(decimal value) { purchase = value; return this; }
-        public TransactionBuilder WithSellingAmount(decimal value) { selling = value; return this; }
-
-        public TransactionBuilder ValidateAndProcess()
-        {
-            // Validation logic could go here
-            return this;
-        }
-
-        public SalesRecord StoreRecord()
-        {
-            var record = SalesRecord.CreateWithCalculations(invoice, customer, product, quantity, purchase, selling);
-            storedRecord = record;
-            return record;
+            Console.Write(message + ": ");
+            if (decimal.TryParse(Console.ReadLine(), out decimal val) && val >= 0)
+                return val;
+            Console.WriteLine("Enter a valid amount.");
         }
     }
 }
